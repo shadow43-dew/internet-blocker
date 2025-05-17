@@ -1,86 +1,128 @@
 const express = require('express');
-const { exec } = require('child_process');
-const { promisify } = require('util');
+const cors = require('cors');
+const Database = require('better-sqlite3');
+const si = require('systeminformation');
+const osu = require('node-os-utils');
 
 const app = express();
-const execAsync = promisify(exec);
+const db = new Database('stats.db');
 
-app.get('/api/system/installed-apps', async (req, res) => {
+// Enable CORS
+app.use(cors());
+app.use(express.json());
+
+// Initialize database
+db.exec(`
+  CREATE TABLE IF NOT EXISTS app_stats (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    data_usage_wifi INTEGER DEFAULT 0,
+    data_usage_mobile INTEGER DEFAULT 0,
+    connections_blocked INTEGER DEFAULT 0,
+    last_used DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS system_stats (
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    cpu_usage REAL,
+    memory_usage REAL,
+    network_rx INTEGER,
+    network_tx INTEGER
+  );
+`);
+
+// Helper function to get network stats
+async function getNetworkStats() {
+  const networkStats = await si.networkStats();
+  return networkStats[0] || { rx_bytes: 0, tx_bytes: 0 };
+}
+
+// Update system stats every minute
+setInterval(async () => {
   try {
-    const { stdout } = await execAsync(
-      'powershell -Command "Get-ItemProperty HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\* | Select-Object DisplayName, InstallLocation"'
+    const cpu = await osu.cpu.usage();
+    const memory = await si.mem();
+    const network = await getNetworkStats();
+
+    db.prepare(`
+      INSERT INTO system_stats (cpu_usage, memory_usage, network_rx, network_tx)
+      VALUES (?, ?, ?, ?)
+    `).run(
+      cpu,
+      (memory.used / memory.total) * 100,
+      network.rx_bytes,
+      network.tx_bytes
     );
-
-    const apps = stdout
-      .split('\n')
-      .filter(line => line.trim())
-      .map((line, index) => {
-        const [name, path] = line.split('  ').filter(Boolean);
-        return {
-          id: `sys-${index}`,
-          name: name || 'Unknown App',
-          icon: 'Globe',
-          status: 'allowed',
-          category: 'System',
-          lastUsed: new Date().toISOString(),
-          path: path || '',
-          dataUsage: {
-            wifi: 0,
-            mobile: 0,
-          },
-        };
-      });
-
-    res.json(apps);
   } catch (error) {
-    console.error('Error getting installed apps:', error);
-    res.status(500).json({ error: 'Failed to get installed apps' });
+    console.error('Error updating system stats:', error);
+  }
+}, 60000);
+
+// API Routes
+app.get('/api/stats/overview', (req, res) => {
+  try {
+    const stats = {
+      totalBlocked: db.prepare('SELECT SUM(connections_blocked) as total FROM app_stats').get().total || 0,
+      totalSaved: {
+        data: db.prepare('SELECT SUM(data_usage_wifi + data_usage_mobile) as total FROM app_stats').get().total || 0,
+        bandwidth: db.prepare('SELECT SUM(network_rx + network_tx) as total FROM system_stats').get().total || 0
+      },
+      adsBlocked: Math.floor(Math.random() * 5000), // Placeholder for ad blocking stats
+      appStats: db.prepare('SELECT * FROM app_stats ORDER BY data_usage_wifi + data_usage_mobile DESC LIMIT 10').all()
+    };
+
+    res.json(stats);
+  } catch (error) {
+    console.error('Error fetching stats:', error);
+    res.status(500).json({ error: 'Failed to fetch statistics' });
   }
 });
 
-app.get('/api/system/running-processes', async (req, res) => {
+app.post('/api/stats/app/update', (req, res) => {
+  const { id, name, dataUsageWifi, dataUsageMobile, connectionsBlocked } = req.body;
+
   try {
-    const { stdout } = await execAsync(
-      'powershell -Command "Get-Process | Select-Object ProcessName, Path | Where-Object { $_.Path -ne $null }"'
+    db.prepare(`
+      INSERT INTO app_stats (id, name, data_usage_wifi, data_usage_mobile, connections_blocked)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        data_usage_wifi = data_usage_wifi + ?,
+        data_usage_mobile = data_usage_mobile + ?,
+        connections_blocked = connections_blocked + ?,
+        last_used = CURRENT_TIMESTAMP
+    `).run(
+      id, name, dataUsageWifi, dataUsageMobile, connectionsBlocked,
+      dataUsageWifi, dataUsageMobile, connectionsBlocked
     );
 
-    const processes = stdout
-      .split('\n')
-      .filter(line => line.trim())
-      .map((line, index) => {
-        const [name, path] = line.split('  ').filter(Boolean);
-        return {
-          id: `proc-${index}`,
-          name: name || 'Unknown Process',
-          icon: 'Activity',
-          status: 'allowed',
-          category: 'Running',
-          lastUsed: new Date().toISOString(),
-          path: path || '',
-          dataUsage: {
-            wifi: 0,
-            mobile: 0,
-          },
-        };
-      });
-
-    res.json(processes);
+    res.json({ success: true });
   } catch (error) {
-    console.error('Error getting running processes:', error);
-    res.status(500).json({ error: 'Failed to get running processes' });
+    console.error('Error updating app stats:', error);
+    res.status(500).json({ error: 'Failed to update app statistics' });
   }
 });
 
-app.get('/api/system/info', async (req, res) => {
-  res.json({
-    os: 'Windows',
-    version: '11',
-    arch: 'x64',
-    memory: 16000000000, // 16 GB
-  });
+app.get('/api/stats/system', async (req, res) => {
+  try {
+    const stats = {
+      cpu: await osu.cpu.usage(),
+      memory: await si.mem(),
+      network: await getNetworkStats(),
+      history: db.prepare(`
+        SELECT * FROM system_stats 
+        WHERE timestamp >= datetime('now', '-1 hour')
+        ORDER BY timestamp DESC
+      `).all()
+    };
+
+    res.json(stats);
+  } catch (error) {
+    console.error('Error fetching system stats:', error);
+    res.status(500).json({ error: 'Failed to fetch system statistics' });
+  }
 });
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Statistics server running on port ${PORT}`);
 });

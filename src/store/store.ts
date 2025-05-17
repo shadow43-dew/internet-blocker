@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { generateRandomAppList } from '../lib/utils';
 import { AppInfo, AppStatus, Category, UsageStats, SystemSettings, ThemeSettings } from '../lib/types';
 import { getInstalledApps, getRunningProcesses } from '../services/systemService';
+import { getStatisticsOverview, updateAppStats } from '../services/statsService';
 
 interface AppState {
   apps: AppInfo[];
@@ -25,6 +26,7 @@ interface AppState {
   updateTheme: (theme: Partial<ThemeSettings>) => void;
   updateSystemSettings: (settings: Partial<SystemSettings>) => void;
   refreshSystemApps: () => Promise<void>;
+  refreshStats: () => Promise<void>;
 }
 
 const initialApps = generateRandomAppList(15);
@@ -65,33 +67,42 @@ export const useAppStore = create<AppState>()(
       masterBlockEnabled: true,
       systemSettings: defaultSystemSettings,
       stats: {
-        totalBlocked: 1247,
+        totalBlocked: 0,
         totalSaved: {
-          data: 456000000,
-          bandwidth: 780000000,
+          data: 0,
+          bandwidth: 0,
         },
-        adsBlocked: 3456,
-        appStats: initialApps.map(app => ({
-          appId: app.id,
-          blockedCount: Math.floor(Math.random() * 500),
-          dataSaved: Math.floor(Math.random() * 100000000),
-        })),
+        adsBlocked: 0,
+        appStats: [],
       },
 
-      toggleAppStatus: (appId: string) => {
+      refreshStats: async () => {
+        const stats = await getStatisticsOverview();
+        set({ stats });
+      },
+
+      toggleAppStatus: async (appId: string) => {
+        const app = get().apps.find(a => a.id === appId);
+        if (!app) return;
+
+        const newStatus: AppStatus = app.status === 'blocked' ? 'allowed' : 'blocked';
+        
+        // Update local state
         set(state => ({
-          apps: state.apps.map(app => {
-            if (app.id === appId) {
-              let newStatus: AppStatus = 'allowed';
-              if (app.status === 'allowed') newStatus = 'blocked';
-              if (app.status === 'blocked') newStatus = 'allowed';
-              if (app.status === 'whitelist') newStatus = 'blocked';
-              
-              return { ...app, status: newStatus };
-            }
-            return app;
-          }),
+          apps: state.apps.map(a => 
+            a.id === appId ? { ...a, status: newStatus } : a
+          ),
         }));
+
+        // Update statistics
+        await updateAppStats(appId, {
+          dataUsageWifi: Math.floor(Math.random() * 1000000),
+          dataUsageMobile: Math.floor(Math.random() * 500000),
+          connectionsBlocked: newStatus === 'blocked' ? 1 : 0,
+        });
+
+        // Refresh stats
+        await get().refreshStats();
       },
 
       toggleAdBlock: () => {
@@ -124,7 +135,7 @@ export const useAppStore = create<AppState>()(
         }));
       },
 
-      blockApp: (appId: string) => {
+      blockApp: async (appId: string) => {
         set(state => ({
           apps: state.apps.map(app => {
             if (app.id === appId) {
@@ -133,6 +144,16 @@ export const useAppStore = create<AppState>()(
             return app;
           }),
         }));
+
+        // Update statistics
+        await updateAppStats(appId, {
+          dataUsageWifi: 0,
+          dataUsageMobile: 0,
+          connectionsBlocked: 1,
+        });
+
+        // Refresh stats
+        await get().refreshStats();
       },
 
       unblockApp: (appId: string) => {
