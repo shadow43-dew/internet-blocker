@@ -18,26 +18,14 @@ export async function getStatisticsOverview(): Promise<UsageStats> {
   }
 }
 
-export async function updateAppStats(appId: string, stats: {
-  dataUsageWifi: number;
-  dataUsageMobile: number;
-  connectionsBlocked: number;
-}): Promise<void> {
+export async function getProcessStats(): Promise<any[]> {
   try {
-    const response = await fetch(`${API_URL}/stats/app/update`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        id: appId,
-        ...stats,
-      }),
-    });
-    
-    if (!response.ok) throw new Error('Failed to update statistics');
+    const response = await fetch(`${API_URL}/stats/processes`);
+    if (!response.ok) throw new Error('Failed to fetch process statistics');
+    return await response.json();
   } catch (error) {
-    console.error('Error updating app statistics:', error);
+    console.error('Error fetching process statistics:', error);
+    return [];
   }
 }
 
@@ -52,6 +40,7 @@ export async function getSystemStats(): Promise<any> {
       cpu: 0,
       memory: { used: 0, total: 0 },
       network: { rx_bytes: 0, tx_bytes: 0 },
+      processes: [],
       history: []
     };
   }
