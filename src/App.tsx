@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/layout/Layout';
 import Dashboard from './pages/Dashboard';
@@ -10,8 +10,20 @@ import BlockApp from './pages/BlockApp';
 import AdBlock from './pages/AdBlock';
 import Statistics from './pages/Statistics';
 import Settings from './pages/Settings';
+import { useAppStore } from './store/store';
 
 function App() {
+  const { systemSettings } = useAppStore();
+  const { theme } = systemSettings;
+
+  useEffect(() => {
+    // Apply theme to root element
+    document.documentElement.classList.toggle('dark', theme.isDarkMode);
+    document.documentElement.style.setProperty('--primary-color', theme.primaryColor);
+    document.documentElement.style.setProperty('--background-color', theme.backgroundColor);
+    document.documentElement.style.setProperty('--text-color', theme.textColor);
+  }, [theme]);
+
   return (
     <Router>
       <Routes>

@@ -1,32 +1,33 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
         primary: {
-          50: '#e8f0fe',
-          100: '#d2e3fc',
-          200: '#a6c8fa',
-          300: '#7aacf7',
-          400: '#4e91f5',
-          500: '#1a73e8', // Main primary
-          600: '#1765cc',
-          700: '#1557b0',
-          800: '#12488f',
-          900: '#0f3a73',
+          50: 'var(--primary-50, #e8f0fe)',
+          100: 'var(--primary-100, #d2e3fc)',
+          200: 'var(--primary-200, #a6c8fa)',
+          300: 'var(--primary-300, #7aacf7)',
+          400: 'var(--primary-400, #4e91f5)',
+          500: 'var(--primary-500, var(--primary-color, #1a73e8))',
+          600: 'var(--primary-600, #1765cc)',
+          700: 'var(--primary-700, #1557b0)',
+          800: 'var(--primary-800, #12488f)',
+          900: 'var(--primary-900, #0f3a73)',
         },
         secondary: {
-          50: '#f8f9fa',
-          100: '#f1f3f4',
-          200: '#e8eaed',
-          300: '#dadce0',
-          400: '#bdc1c6',
-          500: '#9aa0a6', // Main secondary
-          600: '#80868b',
-          700: '#5f6368',
-          800: '#3c4043',
-          900: '#202124',
+          50: 'var(--secondary-50, #f8f9fa)',
+          100: 'var(--secondary-100, #f1f3f4)',
+          200: 'var(--secondary-200, #e8eaed)',
+          300: 'var(--secondary-300, #dadce0)',
+          400: 'var(--secondary-400, #bdc1c6)',
+          500: 'var(--secondary-500, #9aa0a6)',
+          600: 'var(--secondary-600, #80868b)',
+          700: 'var(--secondary-700, #5f6368)',
+          800: 'var(--secondary-800, #3c4043)',
+          900: 'var(--secondary-900, #202124)',
         },
         success: {
           50: '#e6f4ea',
@@ -34,7 +35,7 @@ export default {
           200: '#a8dab5',
           300: '#81c995',
           400: '#5bb974',
-          500: '#34a853', // Success green
+          500: '#34a853',
           600: '#1e8e3e',
           700: '#188038',
           800: '#137333',
@@ -46,7 +47,7 @@ export default {
           200: '#f6aea9',
           300: '#f28b82',
           400: '#ee675c',
-          500: '#ea4335', // Danger red
+          500: '#ea4335',
           600: '#d93025',
           700: '#c5221f',
           800: '#b31412',
@@ -58,7 +59,7 @@ export default {
           200: '#fddf8a',
           300: '#fdd663',
           400: '#fcc934',
-          500: '#fbbc04', // Warning yellow
+          500: '#fbbc04',
           600: '#f9ab00',
           700: '#f29900',
           800: '#ea8600',
