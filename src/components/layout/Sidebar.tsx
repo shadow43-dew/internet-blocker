@@ -35,7 +35,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-center h-16 border-b border-secondary-200">
           <Shield className="h-8 w-8 text-primary-500" />
-          <span className="ml-2 text-lg font-semibold">NetBlocker</span>
+          <span className="ml-2 text-lg font-semibold">Internet Blocker</span>
         </div>
         
         <nav className="flex-1 overflow-y-auto py-4">
