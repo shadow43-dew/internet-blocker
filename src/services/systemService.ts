@@ -1,8 +1,11 @@
-// This file would contain system-level operations for a Windows application
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import { AppInfo } from '../lib/types';
+
+const execAsync = promisify(exec);
 
 export const isRunningAsAdmin = (): boolean => {
   // In a real implementation, this would check if the app has admin privileges
-  // For a web app, this is a stub
   console.log('Checking if running as admin');
   return false;
 };
@@ -30,8 +33,70 @@ export const getSystemInfo = async (): Promise<Record<string, any>> => {
   };
 };
 
-// For a real Windows app, this service might include:
-// - Registry manipulation for startup settings
-// - Windows service management
-// - User account control (UAC) interactions
-// - System information retrieval
+export const getInstalledApps = async (): Promise<AppInfo[]> => {
+  try {
+    // Get list of installed applications from Windows Registry
+    const { stdout } = await execAsync(
+      'powershell -Command "Get-ItemProperty HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\* | Select-Object DisplayName, InstallLocation"'
+    );
+
+    const apps: AppInfo[] = stdout
+      .split('\n')
+      .filter(line => line.trim())
+      .map((line, index) => {
+        const [name, path] = line.split('  ').filter(Boolean);
+        return {
+          id: `sys-${index}`,
+          name: name || 'Unknown App',
+          icon: 'Globe',
+          status: 'allowed',
+          category: 'System',
+          lastUsed: new Date().toISOString(),
+          path: path || '',
+          dataUsage: {
+            wifi: 0,
+            mobile: 0,
+          },
+        };
+      });
+
+    return apps;
+  } catch (error) {
+    console.error('Error getting installed apps:', error);
+    return [];
+  }
+};
+
+export const getRunningProcesses = async (): Promise<AppInfo[]> => {
+  try {
+    // Get list of running processes
+    const { stdout } = await execAsync(
+      'powershell -Command "Get-Process | Select-Object ProcessName, Path | Where-Object { $_.Path -ne $null }"'
+    );
+
+    const processes: AppInfo[] = stdout
+      .split('\n')
+      .filter(line => line.trim())
+      .map((line, index) => {
+        const [name, path] = line.split('  ').filter(Boolean);
+        return {
+          id: `proc-${index}`,
+          name: name || 'Unknown Process',
+          icon: 'Activity',
+          status: 'allowed',
+          category: 'Running',
+          lastUsed: new Date().toISOString(),
+          path: path || '',
+          dataUsage: {
+            wifi: 0,
+            mobile: 0,
+          },
+        };
+      });
+
+    return processes;
+  } catch (error) {
+    console.error('Error getting running processes:', error);
+    return [];
+  }
+};

@@ -33,3 +33,19 @@ export interface UsageStats {
     dataSaved: number;
   }>;
 }
+
+export interface ThemeSettings {
+  primaryColor: string;
+  backgroundColor: string;
+  textColor: string;
+  isDarkMode: boolean;
+}
+
+export interface SystemSettings {
+  theme: ThemeSettings;
+  notifications: boolean;
+  startupOnBoot: boolean;
+  batteryOptimization: boolean;
+  backgroundRunning: boolean;
+  autoUpdate: boolean;
+}

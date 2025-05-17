@@ -3,25 +3,35 @@ import {
   Shield, 
   Bell, 
   LifeBuoy, 
-  Clock, 
   Battery, 
   Cpu, 
   RefreshCw,
-  HardDrive
+  Moon,
+  Sun,
+  Palette
 } from 'lucide-react';
 import PageContainer from '../components/layout/PageContainer';
 import ToggleCard from '../components/common/ToggleCard';
 import { useAppStore } from '../store/store';
 
 export function Settings() {
-  const { masterBlockEnabled, toggleMasterBlock } = useAppStore();
+  const { systemSettings, updateSystemSettings, updateTheme } = useAppStore();
   
-  // These would be backed by actual state in a full implementation
-  const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
-  const [startupEnabled, setStartupEnabled] = React.useState(true);
-  const [batteryOptimization, setBatteryOptimization] = React.useState(true);
-  const [autoUpdate, setAutoUpdate] = React.useState(false);
-  const [backgroundRunning, setBackgroundRunning] = React.useState(true);
+  const handleThemeChange = (isDarkMode: boolean) => {
+    updateTheme({
+      isDarkMode,
+      backgroundColor: isDarkMode ? '#202124' : '#ffffff',
+      textColor: isDarkMode ? '#ffffff' : '#202124',
+    });
+  };
+
+  const colors = [
+    { name: 'Blue', value: '#1a73e8' },
+    { name: 'Green', value: '#34a853' },
+    { name: 'Red', value: '#ea4335' },
+    { name: 'Purple', value: '#9334e8' },
+    { name: 'Orange', value: '#fa7b17' },
+  ];
 
   return (
     <PageContainer
@@ -30,30 +40,57 @@ export function Settings() {
     >
       <div className="space-y-6">
         <div>
-          <h2 className="text-lg font-medium text-secondary-900 mb-4">General Settings</h2>
+          <h2 className="text-lg font-medium text-secondary-900 mb-4">Theme Settings</h2>
           <div className="space-y-4">
             <ToggleCard
-              title="Master Protection"
-              description="Enable/disable all internet blocking features"
-              icon={Shield}
-              enabled={masterBlockEnabled}
-              onToggle={toggleMasterBlock}
+              title="Dark Mode"
+              description="Enable dark mode for better visibility in low light"
+              icon={systemSettings.theme.isDarkMode ? Moon : Sun}
+              enabled={systemSettings.theme.isDarkMode}
+              onToggle={() => handleThemeChange(!systemSettings.theme.isDarkMode)}
             />
             
+            <div className="bg-white rounded-lg shadow-sm border border-secondary-200 p-4">
+              <div className="flex items-center mb-3">
+                <Palette className="h-5 w-5 text-primary-500" />
+                <h3 className="ml-2 text-base font-medium text-secondary-900">Accent Color</h3>
+              </div>
+              <div className="flex space-x-2">
+                {colors.map((color) => (
+                  <button
+                    key={color.value}
+                    className={`w-8 h-8 rounded-full border-2 ${
+                      systemSettings.theme.primaryColor === color.value
+                        ? 'border-secondary-400'
+                        : 'border-transparent'
+                    }`}
+                    style={{ backgroundColor: color.value }}
+                    onClick={() => updateTheme({ primaryColor: color.value })}
+                    title={color.name}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h2 className="text-lg font-medium text-secondary-900 mb-4">General Settings</h2>
+          <div className="space-y-4">
             <ToggleCard
               title="Notifications"
               description="Receive alerts about blocked connections and data usage"
               icon={Bell}
-              enabled={notificationsEnabled}
-              onToggle={() => setNotificationsEnabled(!notificationsEnabled)}
+              enabled={systemSettings.notifications}
+              onToggle={() => updateSystemSettings({ notifications: !systemSettings.notifications })}
             />
             
             <ToggleCard
               title="Start on Boot"
               description="Automatically start the application when your computer starts"
               icon={LifeBuoy}
-              enabled={startupEnabled}
-              onToggle={() => setStartupEnabled(!startupEnabled)}
+              enabled={systemSettings.startupOnBoot}
+              onToggle={() => updateSystemSettings({ startupOnBoot: !systemSettings.startupOnBoot })}
             />
           </div>
         </div>
@@ -65,24 +102,24 @@ export function Settings() {
               title="Battery Optimization"
               description="Optimize application performance to save battery"
               icon={Battery}
-              enabled={batteryOptimization}
-              onToggle={() => setBatteryOptimization(!batteryOptimization)}
+              enabled={systemSettings.batteryOptimization}
+              onToggle={() => updateSystemSettings({ batteryOptimization: !systemSettings.batteryOptimization })}
             />
             
             <ToggleCard
               title="Background Running"
               description="Allow the app to run in the background to maintain protection"
               icon={Cpu}
-              enabled={backgroundRunning}
-              onToggle={() => setBackgroundRunning(!backgroundRunning)}
+              enabled={systemSettings.backgroundRunning}
+              onToggle={() => updateSystemSettings({ backgroundRunning: !systemSettings.backgroundRunning })}
             />
             
             <ToggleCard
               title="Auto Update"
               description="Automatically update block lists and application"
               icon={RefreshCw}
-              enabled={autoUpdate}
-              onToggle={() => setAutoUpdate(!autoUpdate)}
+              enabled={systemSettings.autoUpdate}
+              onToggle={() => updateSystemSettings({ autoUpdate: !systemSettings.autoUpdate })}
             />
           </div>
         </div>
