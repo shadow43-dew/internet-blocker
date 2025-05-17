@@ -6,10 +6,5 @@ export default defineConfig({
   plugins: [react()],
   optimizeDeps: {
     exclude: ['lucide-react'],
-  },
-  build: {
-    rollupOptions: {
-      external: ['child_process']
-    }
   }
 });
