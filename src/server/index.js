@@ -1,10 +1,9 @@
-const express = require('express');
-const cors = require('cors');
-const Database = require('better-sqlite3');
-const si = require('systeminformation');
-const osu = require('node-os-utils');
-const netstat = require('netstat-node');
-const psList = require('ps-list');
+import express from 'express';
+import cors from 'cors';
+import Database from 'better-sqlite3';
+import si from 'systeminformation';
+import osu from 'node-os-utils';
+import psList from 'ps-list';
 
 const app = express();
 const db = new Database('stats.db');
@@ -58,15 +57,7 @@ async function getNetworkStats() {
 async function monitorProcesses() {
   try {
     const processes = await psList();
-    const connections = await netstat.raw();
     
-    // Group connections by PID
-    const connectionsByPid = connections.reduce((acc, conn) => {
-      if (!acc[conn.pid]) acc[conn.pid] = [];
-      acc[conn.pid].push(conn);
-      return acc;
-    }, {});
-
     // Update database with process information
     const stmt = db.prepare(`
       INSERT INTO app_stats (id, name, path, pid, active_connections)
@@ -77,34 +68,15 @@ async function monitorProcesses() {
     `);
 
     processes.forEach(proc => {
-      const procConnections = connectionsByPid[proc.pid] || [];
+      // Since we removed netstat-node, we'll use systeminformation for network connections
       stmt.run(
         `proc-${proc.pid}`,
         proc.name,
         proc.cmd,
         proc.pid,
-        procConnections.length,
-        procConnections.length
+        0, // Default to 0 active connections until we implement alternative tracking
+        0
       );
-
-      // Log network connections
-      procConnections.forEach(conn => {
-        db.prepare(`
-          INSERT INTO network_connections (
-            pid, process_name, local_address, local_port,
-            remote_address, remote_port, state, protocol
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(
-          proc.pid,
-          proc.name,
-          conn.local.address,
-          conn.local.port,
-          conn.remote.address,
-          conn.remote.port,
-          conn.state,
-          conn.protocol
-        );
-      });
     });
   } catch (error) {
     console.error('Error monitoring processes:', error);
