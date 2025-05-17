@@ -45,3 +45,22 @@ export async function getSystemStats(): Promise<any> {
     };
   }
 }
+
+export async function updateAppStats(appId: string, stats: {
+  dataUsageWifi: number;
+  dataUsageMobile: number;
+  connectionsBlocked: number;
+}): Promise<void> {
+  try {
+    const response = await fetch(`${API_URL}/stats/app/${appId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(stats),
+    });
+    if (!response.ok) throw new Error('Failed to update app statistics');
+  } catch (error) {
+    console.error('Error updating app statistics:', error);
+  }
+}
