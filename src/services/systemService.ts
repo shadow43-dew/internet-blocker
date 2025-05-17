@@ -1,8 +1,6 @@
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import { AppInfo } from '../lib/types';
 
-const execAsync = promisify(exec);
+const API_URL = 'http://localhost:3001/api';
 
 export const isRunningAsAdmin = (): boolean => {
   // In a real implementation, this would check if the app has admin privileges
@@ -23,44 +21,26 @@ export const setStartupOnBoot = async (enable: boolean): Promise<boolean> => {
 };
 
 export const getSystemInfo = async (): Promise<Record<string, any>> => {
-  // In a real implementation, this would return system information
-  console.log('Getting system info');
-  return {
-    os: 'Windows',
-    version: '11',
-    arch: 'x64',
-    memory: 16000000000, // 16 GB
-  };
+  try {
+    const response = await fetch(`${API_URL}/system/info`);
+    if (!response.ok) throw new Error('Failed to fetch system info');
+    return await response.json();
+  } catch (error) {
+    console.error('Error getting system info:', error);
+    return {
+      os: 'Windows',
+      version: '11',
+      arch: 'x64',
+      memory: 16000000000, // 16 GB
+    };
+  }
 };
 
 export const getInstalledApps = async (): Promise<AppInfo[]> => {
   try {
-    // Get list of installed applications from Windows Registry
-    const { stdout } = await execAsync(
-      'powershell -Command "Get-ItemProperty HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\* | Select-Object DisplayName, InstallLocation"'
-    );
-
-    const apps: AppInfo[] = stdout
-      .split('\n')
-      .filter(line => line.trim())
-      .map((line, index) => {
-        const [name, path] = line.split('  ').filter(Boolean);
-        return {
-          id: `sys-${index}`,
-          name: name || 'Unknown App',
-          icon: 'Globe',
-          status: 'allowed',
-          category: 'System',
-          lastUsed: new Date().toISOString(),
-          path: path || '',
-          dataUsage: {
-            wifi: 0,
-            mobile: 0,
-          },
-        };
-      });
-
-    return apps;
+    const response = await fetch(`${API_URL}/system/installed-apps`);
+    if (!response.ok) throw new Error('Failed to fetch installed apps');
+    return await response.json();
   } catch (error) {
     console.error('Error getting installed apps:', error);
     return [];
@@ -69,32 +49,9 @@ export const getInstalledApps = async (): Promise<AppInfo[]> => {
 
 export const getRunningProcesses = async (): Promise<AppInfo[]> => {
   try {
-    // Get list of running processes
-    const { stdout } = await execAsync(
-      'powershell -Command "Get-Process | Select-Object ProcessName, Path | Where-Object { $_.Path -ne $null }"'
-    );
-
-    const processes: AppInfo[] = stdout
-      .split('\n')
-      .filter(line => line.trim())
-      .map((line, index) => {
-        const [name, path] = line.split('  ').filter(Boolean);
-        return {
-          id: `proc-${index}`,
-          name: name || 'Unknown Process',
-          icon: 'Activity',
-          status: 'allowed',
-          category: 'Running',
-          lastUsed: new Date().toISOString(),
-          path: path || '',
-          dataUsage: {
-            wifi: 0,
-            mobile: 0,
-          },
-        };
-      });
-
-    return processes;
+    const response = await fetch(`${API_URL}/system/running-processes`);
+    if (!response.ok) throw new Error('Failed to fetch running processes');
+    return await response.json();
   } catch (error) {
     console.error('Error getting running processes:', error);
     return [];
