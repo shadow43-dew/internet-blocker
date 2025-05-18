@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { generateRandomAppList } from '../lib/utils';
 import { AppInfo, AppStatus, Category, UsageStats, SystemSettings, ThemeSettings } from '../lib/types';
 import { getInstalledApps, getRunningProcesses } from '../services/systemService';
-import { getStatisticsOverview, updateAppStats } from '../services/statsService';
+import { getStatisticsOverview } from '../services/statsService';
+import { blockApp, unblockApp, addToWhitelist as addToWhitelistApi, removeFromWhitelist as removeFromWhitelistApi } from '../services/api';
 
 interface AppState {
   apps: AppInfo[];
@@ -29,19 +29,6 @@ interface AppState {
   refreshStats: () => Promise<void>;
 }
 
-const initialApps = generateRandomAppList(15);
-
-const categoryCounts: Record<string, number> = {};
-initialApps.forEach(app => {
-  categoryCounts[app.category] = (categoryCounts[app.category] || 0) + 1;
-});
-
-const initialCategories: Category[] = Object.keys(categoryCounts).map(name => ({
-  id: name.toLowerCase(),
-  name,
-  appCount: categoryCounts[name],
-}));
-
 const defaultTheme: ThemeSettings = {
   primaryColor: '#1a73e8',
   backgroundColor: '#ffffff',
@@ -61,8 +48,8 @@ const defaultSystemSettings: SystemSettings = {
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
-      apps: initialApps,
-      categories: initialCategories,
+      apps: [],
+      categories: [],
       adBlockEnabled: true,
       masterBlockEnabled: true,
       systemSettings: defaultSystemSettings,
@@ -87,21 +74,18 @@ export const useAppStore = create<AppState>()(
 
         const newStatus: AppStatus = app.status === 'blocked' ? 'allowed' : 'blocked';
         
-        // Update local state
+        if (newStatus === 'blocked') {
+          await blockApp(app);
+        } else {
+          await unblockApp(app);
+        }
+        
         set(state => ({
           apps: state.apps.map(a => 
             a.id === appId ? { ...a, status: newStatus } : a
           ),
         }));
 
-        // Update statistics
-        await updateAppStats(appId, {
-          dataUsageWifi: Math.floor(Math.random() * 1000000),
-          dataUsageMobile: Math.floor(Math.random() * 500000),
-          connectionsBlocked: newStatus === 'blocked' ? 1 : 0,
-        });
-
-        // Refresh stats
         await get().refreshStats();
       },
 
@@ -113,58 +97,74 @@ export const useAppStore = create<AppState>()(
         set(state => ({ masterBlockEnabled: !state.masterBlockEnabled }));
       },
 
-      addToWhitelist: (appId: string) => {
-        set(state => ({
-          apps: state.apps.map(app => {
-            if (app.id === appId) {
-              return { ...app, status: 'whitelist' };
-            }
-            return app;
-          }),
-        }));
+      addToWhitelist: async (appId: string) => {
+        const app = get().apps.find(a => a.id === appId);
+        if (!app) return;
+
+        const success = await addToWhitelistApi(app);
+        if (success) {
+          set(state => ({
+            apps: state.apps.map(a => {
+              if (a.id === appId) {
+                return { ...a, status: 'whitelist' };
+              }
+              return a;
+            }),
+          }));
+        }
       },
 
-      removeFromWhitelist: (appId: string) => {
-        set(state => ({
-          apps: state.apps.map(app => {
-            if (app.id === appId && app.status === 'whitelist') {
-              return { ...app, status: 'allowed' };
-            }
-            return app;
-          }),
-        }));
+      removeFromWhitelist: async (appId: string) => {
+        const app = get().apps.find(a => a.id === appId);
+        if (!app) return;
+
+        const success = await removeFromWhitelistApi(app);
+        if (success) {
+          set(state => ({
+            apps: state.apps.map(a => {
+              if (a.id === appId && a.status === 'whitelist') {
+                return { ...a, status: 'allowed' };
+              }
+              return a;
+            }),
+          }));
+        }
       },
 
       blockApp: async (appId: string) => {
-        set(state => ({
-          apps: state.apps.map(app => {
-            if (app.id === appId) {
-              return { ...app, status: 'blocked' };
-            }
-            return app;
-          }),
-        }));
+        const app = get().apps.find(a => a.id === appId);
+        if (!app) return;
 
-        // Update statistics
-        await updateAppStats(appId, {
-          dataUsageWifi: 0,
-          dataUsageMobile: 0,
-          connectionsBlocked: 1,
-        });
+        const success = await blockApp(app);
+        if (success) {
+          set(state => ({
+            apps: state.apps.map(a => {
+              if (a.id === appId) {
+                return { ...a, status: 'blocked' };
+              }
+              return a;
+            }),
+          }));
+        }
 
-        // Refresh stats
         await get().refreshStats();
       },
 
-      unblockApp: (appId: string) => {
-        set(state => ({
-          apps: state.apps.map(app => {
-            if (app.id === appId && app.status === 'blocked') {
-              return { ...app, status: 'allowed' };
-            }
-            return app;
-          }),
-        }));
+      unblockApp: async (appId: string) => {
+        const app = get().apps.find(a => a.id === appId);
+        if (!app) return;
+
+        const success = await unblockApp(app);
+        if (success) {
+          set(state => ({
+            apps: state.apps.map(a => {
+              if (a.id === appId && a.status === 'blocked') {
+                return { ...a, status: 'allowed' };
+              }
+              return a;
+            }),
+          }));
+        }
       },
 
       getAppsByCategory: (category: string) => {
@@ -203,17 +203,25 @@ export const useAppStore = create<AppState>()(
             getRunningProcesses(),
           ]);
 
-          const systemApps = [...installedApps, ...runningProcesses];
-          const existingApps = get().apps.filter(app => !app.id.startsWith('sys-') && !app.id.startsWith('proc-'));
+          const allApps = [...installedApps, ...runningProcesses];
+          
+          // Create categories based on actual apps
+          const categoryMap = new Map<string, number>();
+          allApps.forEach(app => {
+            const count = categoryMap.get(app.category) || 0;
+            categoryMap.set(app.category, count + 1);
+          });
 
-          set(state => ({
-            apps: [...existingApps, ...systemApps],
-            categories: [
-              ...state.categories,
-              { id: 'system', name: 'System', appCount: installedApps.length },
-              { id: 'running', name: 'Running', appCount: runningProcesses.length },
-            ],
+          const categories = Array.from(categoryMap.entries()).map(([name, count]) => ({
+            id: name.toLowerCase(),
+            name,
+            appCount: count,
           }));
+
+          set({ 
+            apps: allApps,
+            categories 
+          });
         } catch (error) {
           console.error('Error refreshing system apps:', error);
         }
