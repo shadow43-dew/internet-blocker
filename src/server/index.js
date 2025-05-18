@@ -162,6 +162,32 @@ setInterval(async () => {
 
 // API Routes
 
+// Get installed apps
+app.get('/api/apps/installed', async (req, res) => {
+  try {
+    const processes = await psList();
+    const networkConnections = await si.networkConnections();
+    
+    const apps = processes.map(proc => ({
+      id: `proc-${proc.pid}`,
+      name: proc.name,
+      path: proc.cmd || '',
+      pid: proc.pid,
+      status: 'allowed',
+      lastUsed: new Date().toISOString(),
+      dataUsage: {
+        wifi: 0,
+        mobile: 0
+      }
+    }));
+    
+    res.json(apps);
+  } catch (error) {
+    console.error('Error getting installed apps:', error);
+    res.status(500).json({ error: 'Failed to fetch installed apps' });
+  }
+});
+
 // Get overall statistics
 app.get('/api/stats/overview', (req, res) => {
   try {

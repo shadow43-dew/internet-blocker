@@ -1,25 +1,24 @@
 import { AppInfo } from '../lib/types';
-import si from 'systeminformation';
-import psList from 'ps-list';
 
 const API_URL = 'http://localhost:3001/api';
 
 export const getInstalledApps = async (): Promise<AppInfo[]> => {
   try {
-    const processes = await psList();
-    const networkConnections = await si.networkConnections();
+    const response = await fetch(`${API_URL}/apps/installed`);
+    if (!response.ok) throw new Error('Failed to fetch installed apps');
+    const data = await response.json();
     
-    return processes.map(proc => ({
-      id: `proc-${proc.pid}`,
-      name: proc.name,
-      icon: getAppIcon(proc.name),
-      status: 'allowed',
-      category: getAppCategory(proc.name),
-      lastUsed: new Date().toISOString(),
-      path: proc.cmd || '',
+    return data.map((app: any) => ({
+      id: app.id,
+      name: app.name,
+      icon: getAppIcon(app.name),
+      status: app.status || 'allowed',
+      category: getAppCategory(app.name),
+      lastUsed: app.lastUsed,
+      path: app.path || '',
       dataUsage: {
-        wifi: 0,
-        mobile: 0
+        wifi: app.dataUsage?.wifi || 0,
+        mobile: app.dataUsage?.mobile || 0
       }
     }));
   } catch (error) {
@@ -35,7 +34,7 @@ export const getRunningProcesses = async (): Promise<AppInfo[]> => {
     const data = await response.json();
     
     return data.map((proc: any) => ({
-      id: `proc-${proc.pid}`,
+      id: proc.id,
       name: proc.name,
       icon: getAppIcon(proc.name),
       status: proc.status || 'allowed',
