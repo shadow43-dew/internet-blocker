@@ -1,19 +1,15 @@
 import { AppInfo } from '../lib/types';
 
-const API_URL = 'http://localhost:3000/api';
+const API_URL = 'http://localhost:3001/api';
 
 export async function blockApp(app: AppInfo): Promise<boolean> {
   try {
-    const response = await fetch(`${API_URL}/block-app`, {
+    const response = await fetch(`${API_URL}/apps/block`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        id: app.id,
-        name: app.name,
-        path: app.path
-      }),
+      body: JSON.stringify({ appId: app.id }),
     });
     
     const data = await response.json();
@@ -26,16 +22,12 @@ export async function blockApp(app: AppInfo): Promise<boolean> {
 
 export async function unblockApp(app: AppInfo): Promise<boolean> {
   try {
-    const response = await fetch(`${API_URL}/unblock-app`, {
+    const response = await fetch(`${API_URL}/apps/unblock`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        id: app.id,
-        name: app.name,
-        path: app.path
-      }),
+      body: JSON.stringify({ appId: app.id }),
     });
     
     const data = await response.json();
@@ -48,16 +40,12 @@ export async function unblockApp(app: AppInfo): Promise<boolean> {
 
 export async function addToWhitelist(app: AppInfo): Promise<boolean> {
   try {
-    const response = await fetch(`${API_URL}/whitelist`, {
+    const response = await fetch(`${API_URL}/whitelist/add`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        id: app.id,
-        name: app.name,
-        path: app.path
-      }),
+      body: JSON.stringify({ appId: app.id }),
     });
     
     const data = await response.json();
@@ -75,11 +63,7 @@ export async function removeFromWhitelist(app: AppInfo): Promise<boolean> {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        id: app.id,
-        name: app.name,
-        path: app.path
-      }),
+      body: JSON.stringify({ appId: app.id }),
     });
     
     const data = await response.json();
@@ -92,9 +76,9 @@ export async function removeFromWhitelist(app: AppInfo): Promise<boolean> {
 
 export async function getBlockedApps(): Promise<AppInfo[]> {
   try {
-    const response = await fetch(`${API_URL}/blocked-apps`);
+    const response = await fetch(`${API_URL}/stats/processes`);
     const data = await response.json();
-    return data;
+    return data.filter((app: any) => app.status === 'blocked');
   } catch (error) {
     console.error('Error getting blocked apps:', error);
     return [];
@@ -103,9 +87,9 @@ export async function getBlockedApps(): Promise<AppInfo[]> {
 
 export async function getAdBlockStatus(): Promise<boolean> {
   try {
-    const response = await fetch(`${API_URL}/ad-block/status`);
+    const response = await fetch(`${API_URL}/stats/overview`);
     const data = await response.json();
-    return data.enabled;
+    return data.adsBlocked > 0;
   } catch (error) {
     console.error('Error getting ad block status:', error);
     return false;
@@ -114,7 +98,7 @@ export async function getAdBlockStatus(): Promise<boolean> {
 
 export async function toggleAdBlock(enabled: boolean): Promise<boolean> {
   try {
-    const response = await fetch(`${API_URL}/ad-block/toggle`, {
+    const response = await fetch(`${API_URL}/adblock/toggle`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -126,35 +110,6 @@ export async function toggleAdBlock(enabled: boolean): Promise<boolean> {
     return data.success;
   } catch (error) {
     console.error('Error toggling ad block:', error);
-    return false;
-  }
-}
-
-export async function getSystemBlockStatus(): Promise<boolean> {
-  try {
-    const response = await fetch(`${API_URL}/system/status`);
-    const data = await response.json();
-    return data.enabled;
-  } catch (error) {
-    console.error('Error getting system block status:', error);
-    return false;
-  }
-}
-
-export async function toggleSystemBlock(enabled: boolean): Promise<boolean> {
-  try {
-    const response = await fetch(`${API_URL}/system/toggle`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ enabled }),
-    });
-    
-    const data = await response.json();
-    return data.success;
-  } catch (error) {
-    console.error('Error toggling system block:', error);
     return false;
   }
 }
