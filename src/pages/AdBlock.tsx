@@ -1,12 +1,13 @@
 import React from 'react';
 import PageContainer from '../components/layout/PageContainer';
-import { Shield, Zap } from 'lucide-react';
-import { useAppStore } from '../store/store';
+import { Shield } from 'lucide-react';
+import { useAdBlockStore } from '../services/adBlockService';
 import Switch from '../components/ui/Switch';
-import AdBlockFeatures from '../components/adblock/AdBlockFeatures';
+import AdBlockStats from '../components/adblock/AdBlockStats';
+import AdBlockRules from '../components/adblock/AdBlockRules';
 
 export function AdBlock() {
-  const { adBlockEnabled, toggleAdBlock, stats } = useAppStore();
+  const { isEnabled, toggleEnabled, stats } = useAdBlockStore();
 
   return (
     <PageContainer
@@ -20,41 +21,51 @@ export function AdBlock() {
             <h2 className="ml-2 text-xl font-semibold text-secondary-900">Ad Blocker</h2>
           </div>
           <Switch
-            checked={adBlockEnabled}
-            onChange={toggleAdBlock}
+            checked={isEnabled}
+            onChange={toggleEnabled}
             size="lg"
             color="primary"
           />
         </div>
         
         <p className="text-secondary-600 mb-4">
-          Block unwanted ads in apps and websites to save data, improve privacy, and enhance your experience.
+          Block unwanted ads and trackers to improve privacy and enhance your browsing experience.
+          {isEnabled ? ' Currently active and protecting your device.' : ' Currently disabled.'}
         </p>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-          <div className="bg-secondary-50 p-4 rounded-lg">
-            <h3 className="font-medium text-secondary-900">Ads Blocked</h3>
-            <p className="text-2xl font-bold text-primary-500 mt-1">{stats.adsBlocked}</p>
-          </div>
-          
-          <div className="bg-secondary-50 p-4 rounded-lg">
-            <h3 className="font-medium text-secondary-900">Data Saved</h3>
-            <p className="text-2xl font-bold text-success-500 mt-1">47.8 MB</p>
-          </div>
-          
-          <div className="bg-secondary-50 p-4 rounded-lg">
-            <h3 className="font-medium text-secondary-900">Loading Speed</h3>
-            <p className="text-2xl font-bold text-warning-500 mt-1">
-              <span className="flex items-center">
-                +38% <Zap className="ml-1 h-5 w-5" />
-              </span>
-            </p>
+        <div className="mt-4 p-4 bg-secondary-50 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-secondary-900">
+                Total Blocked
+              </p>
+              <p className="mt-1 text-2xl font-bold text-primary-500">
+                {stats.totalBlocked.toLocaleString()}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-medium text-secondary-900">
+                Last Updated
+              </p>
+              <p className="mt-1 text-sm text-secondary-500">
+                {stats.lastUpdated.toLocaleString()}
+              </p>
+            </div>
           </div>
         </div>
       </div>
-      
-      <h2 className="text-xl font-semibold text-secondary-900 mb-4">Ad Blocking Features</h2>
-      <AdBlockFeatures />
+
+      <div className="space-y-6">
+        <section>
+          <h2 className="text-xl font-semibold text-secondary-900 mb-4">Statistics</h2>
+          <AdBlockStats />
+        </section>
+
+        <section>
+          <h2 className="text-xl font-semibold text-secondary-900 mb-4">Blocking Rules</h2>
+          <AdBlockRules />
+        </section>
+      </div>
     </PageContainer>
   );
 }
