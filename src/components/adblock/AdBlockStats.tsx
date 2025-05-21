@@ -88,3 +88,5 @@ export function AdBlockStats() {
     </div>
   );
 }
+
+export default AdBlockStats
