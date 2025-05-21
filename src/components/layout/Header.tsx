@@ -2,6 +2,7 @@ import React from 'react';
 import { Shield, Menu, X, Settings } from 'lucide-react';
 import Button from '../ui/Button';
 import { useAppStore } from '../../store/store';
+import { useNavigate } from 'react-router-dom';
 
 interface HeaderProps {
   onToggleSidebar: () => void;
@@ -10,6 +11,7 @@ interface HeaderProps {
 
 export function Header({ onToggleSidebar, sidebarOpen }: HeaderProps) {
   const { masterBlockEnabled, toggleMasterBlock } = useAppStore();
+  const navigate = useNavigate();
 
   return (
     <header className="bg-white shadow-sm border-b border-secondary-200 fixed top-0 left-0 right-0 z-10">
@@ -43,11 +45,17 @@ export function Header({ onToggleSidebar, sidebarOpen }: HeaderProps) {
             size="sm"
             icon={<Settings size={20} />}
             className="text-secondary-700"
+            onClick={() => navigate('/settings')}
           />
         </div>
       </div>
+      
+      {/* Protection status indicator */}
+      <div 
+        className={`absolute bottom-0 left-0 right-0 h-0.5 transition-colors ${
+          masterBlockEnabled ? 'bg-success-500' : 'bg-danger-500'
+        }`}
+      />
     </header>
   );
 }
-
-export default Header;

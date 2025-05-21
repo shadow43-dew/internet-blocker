@@ -93,8 +93,38 @@ export const useAppStore = create<AppState>()(
         set(state => ({ adBlockEnabled: !state.adBlockEnabled }));
       },
 
-      toggleMasterBlock: () => {
-        set(state => ({ masterBlockEnabled: !state.masterBlockEnabled }));
+      toggleMasterBlock: async () => {
+        const currentState = get().masterBlockEnabled;
+        const newState = !currentState;
+        
+        set({ masterBlockEnabled: newState });
+        
+        // Update all non-whitelisted apps based on master block state
+        const apps = get().apps.map(app => {
+          if (app.status === 'whitelist') return app;
+          
+          if (newState) {
+            return { ...app, status: 'blocked' };
+          } else {
+            return { ...app, status: 'allowed' };
+          }
+        });
+        
+        set({ apps });
+        
+        // Update all apps in the backend
+        await Promise.all(
+          apps.map(app => {
+            if (app.status === 'blocked') {
+              return blockApp(app);
+            } else if (app.status === 'allowed') {
+              return unblockApp(app);
+            }
+            return Promise.resolve();
+          })
+        );
+        
+        await get().refreshStats();
       },
 
       addToWhitelist: async (appId: string) => {
@@ -123,7 +153,7 @@ export const useAppStore = create<AppState>()(
           set(state => ({
             apps: state.apps.map(a => {
               if (a.id === appId && a.status === 'whitelist') {
-                return { ...a, status: 'allowed' };
+                return { ...a, status: get().masterBlockEnabled ? 'blocked' : 'allowed' };
               }
               return a;
             }),
