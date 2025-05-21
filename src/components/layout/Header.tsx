@@ -59,3 +59,5 @@ export function Header({ onToggleSidebar, sidebarOpen }: HeaderProps) {
     </header>
   );
 }
+
+export default Header
