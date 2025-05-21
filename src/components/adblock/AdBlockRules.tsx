@@ -134,3 +134,5 @@ export function AdBlockRules() {
     </div>
   );
 }
+
+export default AdBlockRules
