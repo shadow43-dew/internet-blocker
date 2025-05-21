@@ -17,7 +17,7 @@ interface AppState {
   toggleAppStatus: (appId: string) => void;
   toggleAdBlock: () => void;
   toggleMasterBlock: () => void;
-  addToWhitelist: (appId: string) => void;
+  addToWhitelist: (appId: string, newApp?: AppInfo) => void;
   removeFromWhitelist: (appId: string) => void;
   blockApp: (appId: string) => void;
   unblockApp: (appId: string) => void;
@@ -127,8 +127,22 @@ export const useAppStore = create<AppState>()(
         await get().refreshStats();
       },
 
-      addToWhitelist: async (appId: string) => {
-        const app = get().apps.find(a => a.id === appId);
+      addToWhitelist: async (appId: string, newApp?: AppInfo) => {
+        let app = get().apps.find(a => a.id === appId);
+        
+        if (!app && newApp) {
+          app = newApp;
+          // Add the new app to the apps list
+          set(state => ({
+            apps: [...state.apps, newApp],
+            categories: state.categories.map(cat => 
+              cat.name === newApp.category
+                ? { ...cat, appCount: cat.appCount + 1 }
+                : cat
+            )
+          }));
+        }
+        
         if (!app) return;
 
         const success = await addToWhitelistApi(app);

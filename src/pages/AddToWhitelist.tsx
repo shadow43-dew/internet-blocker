@@ -5,6 +5,7 @@ import PageContainer from '../components/layout/PageContainer';
 import Button from '../components/ui/Button';
 import { useAppStore } from '../store/store';
 import AppList from '../components/common/AppList';
+import PhoneAppForm from '../components/common/PhoneAppForm';
 
 export function AddToWhitelist() {
   const { apps, addToWhitelist } = useAppStore();
@@ -15,6 +16,25 @@ export function AddToWhitelist() {
   
   const handleAddToWhitelist = (appId: string) => {
     addToWhitelist(appId);
+  };
+
+  const handleAddPhoneApp = (appName: string, packageName: string) => {
+    const newAppId = `phone-${packageName}`;
+    const phoneApp = {
+      id: newAppId,
+      name: appName,
+      icon: 'Smartphone',
+      status: 'allowed',
+      category: 'Mobile Apps',
+      lastUsed: new Date().toISOString(),
+      path: packageName,
+      dataUsage: {
+        wifi: 0,
+        mobile: 0
+      }
+    };
+    
+    addToWhitelist(newAppId, phoneApp);
   };
 
   return (
@@ -47,7 +67,10 @@ export function AddToWhitelist() {
           </div>
         </div>
       </div>
+
+      <PhoneAppForm onAddApp={handleAddPhoneApp} />
       
+      <h2 className="text-xl font-semibold text-secondary-900 mb-4">System Apps</h2>
       <AppList
         apps={availableApps}
         onToggleStatus={handleAddToWhitelist}
